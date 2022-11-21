@@ -35,7 +35,7 @@ SRC, DST:
 FIND OPTIONS:
   If specified, overrides all default cmdline options for rsync find processes.
   If you use this, options `-niR` must always be present/included.
-  Default value: -aniRe=ssh --size-only
+  Default value: -aniRe=ssh
 
 SYNC OPTIONS:
   If specified, overrides all default cmdline options for rsync sync processes.
@@ -54,19 +54,14 @@ Usage: #{$0} [OPTIONS...] SRC... DST -- [FIND OPTIONS...] -- [SYNC OPTIONS...]
 EXAMPLES:
 
 # Most basic example:
-# (implies finding files to sync with rsync options -aniRe=ssh --size-only,
+# (implies finding files to sync with rsync options -aniRe=ssh,
 # and syncing the actual files with rsync options -lptgoD0e=ssh --files-from=-)
 rsyncnow -v /source/dir /target/dir
 
-# Finding files with full checksum verification, not by size only:
-rsyncnow -v /source/dir /target/dir -- -aniRe=ssh
-
+# Finding files to sync based on file size only, without full checksum:
+rsyncnow -v /source/dir /target/dir -- -aniRe=ssh --size-only
 END
 end
-
-# TODO
-# 1) x -> y/x
-# 2) da moze multiple sources per finder, iako radi jednog po jednog
 
 #######################################################################
 # Parse config:
@@ -80,7 +75,7 @@ $C= {
   rsync: 'rsync',
   verbose: false,
   sources: [],
-  find_options: %w/-aniRe=ssh --size-only/,
+  find_options: %w/-aniRe=ssh/,
   sync_options: %w/-lptgoD0e=ssh --files-from=-/,
   # Runtime variables (mostly accessed while holding a mutex):
   runtime: {
@@ -278,4 +273,3 @@ $C[:finders].times do |i|
   threads<< Thread.new { Finder.new $C[:rsync], $C[:find_options], $C[:sources][range], $C[:destination] }
 end
 threads.each &:join
-

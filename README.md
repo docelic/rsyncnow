@@ -42,23 +42,23 @@ index building).
 
 This enables `rsyncnow` to introduce a huge increase in efficiency as follows:
 
-1. We run a set of `rsync` processes that will be finding files to sync
-(in dry run mode) and printing them to STDOUT as a stream. We call
-these processes `finders`.
+1. It runs a set of `rsync` processes (by default 1) that will be finding
+files to sync (in dry run mode) and printing them to STDOUT as a stream.
+We call these processes `finders`.
 
-1. As the finders keep printing files to sync, we keep reading their
-STDOUT in real-time and pushing the files to be synced to our small
+1. As the finders keep printing files to sync, `rsyncnow` keeps reading
+their STDOUT in real-time and pushing the files to be synced to a small
 internal queue.
 
-1. As soon as enough files to sync are collected (i.e. as soon as
-"blocks" are filled with paths, or periodically every X seconds),
-we run separate rsync processes (called "syncers") which are given those
-specific files to sync. Rsync starts syncing immediately since it is given
-specific paths, there is no index to build.
+1. As it populates the queue and finds enough paths to form a "block"
+(or every X seconds if a block has not been filled up yet), it runs
+separate rsync processes (called "syncers") which are given those
+specific files to sync. Syncers start syncing immediately since they
+are given specific paths, there are no indexes to build.
 
 1. Additionally, if the files to sync are being found faster than they
-are synced, and the bandwidth/resource limits allow it, one can run the
-tool with multiple `syncer` processes to achieve faster/concurrent
+are synced, and the bandwidth/resource limits allow it, one can run
+`rsyncnow` with multiple `syncer` processes to achieve faster/concurrent
 syncing of multiple files.
 
 ## Usage instructions
@@ -93,7 +93,7 @@ SRC, DST:
 FIND OPTIONS:
   If specified, overrides all default cmdline options for rsync find processes.
   If you use this, options `-niR` must always be present/included.
-  Default value: -aniRe=ssh --size-only
+  Default value: -aniRe=ssh
 
 SYNC OPTIONS:
   If specified, overrides all default cmdline options for rsync sync processes.
@@ -106,19 +106,15 @@ SYNC OPTIONS:
 EXAMPLES:
 
 # Most basic example:
-# (implies finding files to sync with rsync options -aniRe=ssh --size-only,
+# (implies finding files to sync with rsync options -aniRe=ssh,
 # and syncing the actual files with rsync options -lptgoD0e=ssh --files-from=-)
 rsyncnow -v /source/dir /target/dir
 
-# Finding files with full checksum verification, not by size only:
-rsyncnow -v /source/dir /target/dir -- -aniRe=ssh
+# Finding files with size differences only, without full checksum:
+rsyncnow -v /source/dir /target/dir -- -aniRe=ssh --size-only
 ```
 
 ## Extra notes
-
-For speed, `rsyncnow`'s default is to find files to sync just based on their
-file size. This can be reverted back to the usual checksum verification just
-by removing `--size-only`, as shown in the examples above.
 
 Currently there is always 1 rsync finder process that is started for each
 source directory, concurrently. If you don't want multiple finders running
