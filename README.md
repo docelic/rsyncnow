@@ -10,7 +10,8 @@ YES.
 ## The rsync problem
 
 Rsync's delta algorithm doesn't need any changes - once a file to sync
-is identified, the algorithm does its job well.
+is identified, the algorithm does its job well (or the whole file is
+copied with rsync option `-W`).
 
 But when rsync is told to sync two directories, before it begins with
 the actual syncing, it builds an index of all the files that need to be
