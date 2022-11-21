@@ -1,3 +1,5 @@
+# Is it any good? YES.
+
 # rsyncnow
 
 This tool is for you if you have a need to rsync so large data sets
