@@ -1,6 +1,6 @@
 # rsyncnow
 
-This tool is for you if you have a need to rsync so large data sets
+This tool is for you if you have a need to rsync data sets so large
 that just building the index of files to sync takes days or weeks.
 
 ## Is it any good?
