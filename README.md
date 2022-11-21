@@ -46,13 +46,14 @@ This enables `rsyncnow` to introduce a huge increase in efficiency as follows:
 (in dry run mode) and printing them to STDOUT as a stream. We call
 these processes `finders`.
 
-1. As the finders keep printing files to sync, keep reading their
-STDOUT in real-time and pushing the files needing a sync to the queue.
+1. As the finders keep printing files to sync, we keep reading their
+STDOUT in real-time and pushing the files to be synced to our small
+internal queue.
 
 1. As soon as enough files to sync are collected (i.e. as soon as
 "blocks" are filled with paths, or periodically every X seconds),
-run separate rsync processes (called "syncers") which are given those
-specific files to sync. They work immediately since they are given
+we run separate rsync processes (called "syncers") which are given those
+specific files to sync. Rsync starts syncing immediately since it is given
 specific paths, there is no index to build.
 
 ## Usage instructions
@@ -120,10 +121,10 @@ at the same time (for example if all source directories to sync are on the
 same partition), you should call `rsyncnow` multiple times with 1 source path
 in every invocation instead of once with multiple source paths.
 
-Rsyncnow doesn't put any restrictions on the rsync options one can use in
+Rsyncnow doesn't put any restrictions on the rsync options that one can use in
 either find or sync phase (options related to comparing/finding files,
 what to copy/sync, max bandwidth to use etc.).
-See a myriad of options available in [rsync man page](https://download.samba.org/pub/rsync/rsync.1)
+See a myriad of options available in the [rsync man page](https://download.samba.org/pub/rsync/rsync.1)
 
 ## Feedback
 
