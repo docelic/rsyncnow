@@ -1,0 +1,281 @@
+#!/usr/bin/env ruby
+# frozen_string_literals: true
+require 'getoptlong'
+require 'open3'
+require 'timeout'
+
+#######################################################################
+# Usage/help and examples:
+
+def usage
+<<-END
+Usage: #{$0} [OPTIONS...] SRC... DST -- [FIND OPTIONS...] -- [SYNC OPTIONS...]
+
+OPTIONS:
+  -f, --finders 1    - Number of rsync find processes. Currently always gets
+                       reset to the number of specified SRC paths
+  -s, --syncers 1    - Nr. of respawning rsync sync/copy processes, per finder
+  -b, --blocksize 5  - Number of files to queue before starting a sync
+  -q, --queuesize 50 - Max number of paths to queue for sync. If not specified,
+                       defaults to blocksize * 10. Rsync find processes get
+                       automatically paused when their queue goes above this
+                       limit and are resumed when queue falls below threshold
+  -t, --timeout 5.0  - After timeout seconds, run rsync sync/copy process even
+                       if block wasn't full
+
+  -r, --rsync rsync  - Name (and/or path) of rsync binary
+
+  -v, --verbose      - Enable rsyncnow and rsync verbose mode
+  -h, --help         - Show help and exit
+  -e, --examples     - Show examples and exit
+
+SRC, DST:
+  Rsync source and destination as usual (including the "/" magic)
+
+FIND OPTIONS:
+  If specified, overrides all default cmdline options for rsync find processes.
+  If you use this, options `-niR` must always be present/included.
+  Default value: -aniRe=ssh --size-only
+
+SYNC OPTIONS:
+  If specified, overrides all default cmdline options for rsync sync processes.
+  If you use this, options `-0 --files-from=-` must always remain present.
+  Default value: -lptgoD0e=ssh --files-from=-
+    NOTE: options -lptgoD are used explicitly instead just specifying -a
+    because -a also includes option -r which should not be present. Recursion
+    is controlled via FIND OPTIONS (where it is enabled/implied by -a)
+END
+end
+
+def examples
+<<-END
+Usage: #{$0} [OPTIONS...] SRC... DST -- [FIND OPTIONS...] -- [SYNC OPTIONS...]
+
+EXAMPLES:
+
+# Most basic example:
+# (implies finding files to sync with rsync options -aniRe=ssh --size-only,
+# and syncing the actual files with rsync options -lptgoD0e=ssh --files-from=-)
+rsyncnow -v /source/dir /target/dir
+
+# Finding files with full checksum verification, not by size only:
+rsyncnow -v /source/dir /target/dir -- -aniRe=ssh
+
+END
+end
+
+# TODO
+# 1) x -> y/x
+# 2) da moze multiple sources per finder, iako radi jednog po jednog
+
+#######################################################################
+# Parse config:
+
+$C= {
+  finders: 1,
+  syncers: 1,
+  blocksize: 5,
+  queuesize: nil,
+  timeout: 5.0,
+  rsync: 'rsync',
+  verbose: false,
+  sources: [],
+  find_options: %w/-aniRe=ssh --size-only/,
+  sync_options: %w/-lptgoD0e=ssh --files-from=-/,
+  # Runtime variables (mostly accessed while holding a mutex):
+  runtime: {
+    finders: 0,
+  }
+}
+
+$mutex= Mutex.new
+
+# Parse program options (note: does not include rsync-specific options)
+opts= GetoptLong.new(
+  [ '--finders', '-f', GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--syncers', '-s', GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--blocksize', '-b', GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--queuesize', '-q', GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--timeout', '-t', GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--rsync', '-r', GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--verbose', '-v', GetoptLong::NO_ARGUMENT ],
+  [ '--help', '-h', GetoptLong::NO_ARGUMENT ],
+  [ '--examples', '-e', GetoptLong::NO_ARGUMENT ],
+)
+opts.ordering= 2
+
+opts.each do |opt, arg|
+  case opt
+  when '--finders', '--syncers', '--blocksize', '--queuesize', '--timeout'
+    $C[opt[2..].to_sym]= arg.to_i
+  when '--rsync'
+    $C[:rsync]= arg
+  when '--verbose'
+    $C[:verbose]= true
+  when '--help'
+      puts usage
+      exit 0
+  when '--examples'
+      puts examples
+      exit 0
+  when ''
+    $C[:sources].push arg
+  end
+end
+
+# See if there are any rsync find options provided
+if ARGV.size> 0
+  if i = ARGV.index('--')
+    ARGV.delete_at i
+  else
+    i = ARGV.size
+  end
+  $C[:find_options] = ARGV.shift i
+end
+
+# See if there are any rsync sync options provided
+if ARGV.size> 0
+  if i = ARGV.index('--')
+    ARGV.delete_at i
+  else
+    i = ARGV.size
+  end
+  $C[:sync_options] = ARGV.shift i
+end
+
+#######################################################################
+# Do final option adjustments:
+
+# Last path is always destination, and all others before it are sources
+$C[:destination]= $C[:sources].pop
+
+# Queue size, if unspecified, defaults to 10 x blocksize
+$C[:queuesize]||= $C[:blocksize]* 10
+
+# If more parallelization is requested than possible, reduce the number
+# XXX currently always re-set to number of sources, because option
+# --files-from doesn't seem to work with more than 1 source.
+if $C[:finders]!= $C[:sources].size
+  $C[:finders]= $C[:sources].size
+end
+
+# How many source paths will each finder process (currently always 1
+# because of the above note)
+$C[:finder_block_size]= ($C[:sources].size/$C[:finders].to_f).ceil
+
+if $C[:verbose]
+  $C[:sync_options].unshift '-v'
+end
+
+def v msg; $C[:verbose] and puts msg end
+
+#######################################################################
+# Define worker classes:
+
+class Finder
+  def initialize cmd, args, sources, dest
+    cmdline= [cmd, args, sources, dest].flatten
+    queue= Queue.new
+    v "Starting finder: %s" % [cmdline]
+
+    threads= []
+
+    $mutex.synchronize {
+      $C[:runtime][:finders]+= 1
+    }
+
+    sources.each do |source|
+      dest2= dest
+      if not source[-1]== '/'
+        source_size= source.size
+        dest2= File.join dest2, File.basename(source)
+      else
+        source_size= source.size- 1
+      end
+      cmdline= [cmd, args, source, dest2].flatten
+      $C[:syncers].times do |i|
+        threads<< Thread.new { Syncer.new queue, $C[:rsync], $C[:sync_options], source, dest2 }
+      end
+
+      Open3.popen2(*cmdline) {|i,o,t|
+        o.each_line do |l|
+          l= l[(13+source_size)..-2]
+
+          if l and l[/\S/]
+            queue<< l
+          end
+
+          if queue.size> $C[:queuesize]
+            Process.kill 'STOP', t.pid
+            v 'Queue contains %d files, pausing finder while queue is being processed' % queue.size
+            while queue.size> $C[:queuesize]
+              sleep $C[:timeout]
+            end
+          end
+          Process.kill 'CONT', t.pid
+        end
+        t.join
+      }
+    end
+
+    $mutex.synchronize {
+      $C[:runtime][:finders]-= 1
+    }
+
+    threads.each &:join
+  end
+end
+
+class Syncer
+  def initialize queue, cmd, args, source, dest
+    cmdline= [cmd, args, source, dest].flatten
+    v "Starting syncer: %s" % [cmdline]
+
+    loop do
+      list= []
+      $C[:blocksize].times do |i|
+        begin
+          Timeout::timeout($C[:timeout]) {
+            list.push queue.pop
+          }
+        rescue Timeout::Error
+          if list.size> 0
+            v 'Finder timeout reached; running syncer with %d out of %d paths' % [list.size, $C[:blocksize]]
+          end
+          break
+        end
+      end
+
+      if list.size> 0
+        read_io, write_io= IO.pipe
+        child= fork do
+          write_io.close
+          STDIN.reopen read_io
+          exec *cmdline
+        end
+        read_io.close
+        write_io.write list.join "\0"
+        write_io.close
+        Process.wait child
+      else
+        v 'No more finders running and no more paths queued; exiting'
+        break if $C[:runtime][:finders]== 0
+      end
+    end
+
+  end
+end
+
+
+#######################################################################
+# Run the thing:
+
+v "Config: #{$C}"
+
+threads= []
+$C[:finders].times do |i|
+  range= ($C[:finder_block_size]*i)...($C[:finder_block_size]*(i+1))
+  threads<< Thread.new { Finder.new $C[:rsync], $C[:find_options], $C[:sources][range], $C[:destination] }
+end
+threads.each &:join
+
