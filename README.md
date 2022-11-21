@@ -110,8 +110,9 @@ EXAMPLES:
 # and syncing the actual files with rsync options -lptgoD0e=ssh --files-from=-)
 rsyncnow -v /source/dir /target/dir
 
-# Finding files with size differences only, without full checksum:
-rsyncnow -v /source/dir /target/dir -- -aniRe=ssh --size-only
+# Finding files with size differences only, without full checksum (--size-only), and
+# syncing them by copying, without using rsync's delta algorithm (-W):
+rsyncnow -v /source/dir /target/dir -- -aniRe=ssh --size-only -- -lptgoD0e=ssh --files-from=- -W
 ```
 
 ## Extra notes
@@ -125,7 +126,7 @@ in every invocation instead of once with multiple source paths.
 Rsyncnow doesn't put any restrictions on the rsync options that one can use in
 either find or sync phase (options related to comparing/finding files,
 what to copy/sync, max bandwidth to use etc.).
-See a myriad of options available in the [rsync man page](https://download.samba.org/pub/rsync/rsync.1)
+See a myriad of options available in the [rsync man page](https://download.samba.org/pub/rsync/rsync.1).
 
 ## Feedback
 
