@@ -1,11 +1,13 @@
-# Is it any good? YES.
-
 # rsyncnow
 
 This tool is for you if you have a need to rsync so large data sets
 that just building the index of files to sync takes days or weeks.
 
-## The problem
+## Is it any good?
+
+YES.
+
+## The rsync problem
 
 Rsync's delta algorithm doesn't need any changes - once a file to sync
 is identified, the algorithm does its job well.
