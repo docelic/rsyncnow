@@ -25,12 +25,15 @@ influence the month's 95th percentile and is essentially free.
 
 Also, it is making it harder to fully sync the source and destination if
 the source is still being modified or uploaded to, because by the time
-rsync completes, the destination is already out of data and requires
-another rsync invocation.
+rsync completes, the destination is already out of date and requires
+another sync.
 
-## The gist of `rsyncnow` operation
+## The gist of rsyncnow operation
 
-The above-described behavior of rsync cannot be changed.
+So how does `rsyncnow` help?
+
+The above-described behavior of rsync in which it first build an index
+and then starts syncing cannot be changed.
 
 However, by using the appropriate command line options, rsync does support
 a mode where it will print the files that need syncing to STDOUT, without
@@ -108,7 +111,8 @@ rsyncnow -v /source/dir /target/dir -- -aniRe=ssh
 ## Extra notes
 
 Rsyncnow doesn't put any restrictions on the rsync options one can use in
-either find or sync phase.
+either find or sync phase (options related to comparing/finding files,
+what to copy/sync, max bandwidth to use etc.).
 
 See a myriad of options available in [rsync man page](https://download.samba.org/pub/rsync/rsync.1)
 
