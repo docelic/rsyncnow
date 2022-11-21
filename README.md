@@ -32,19 +32,19 @@ another sync.
 
 So how does `rsyncnow` help?
 
-The above-described behavior of rsync in which it first build an index
+The above-described behavior of rsync in which it first builds an index
 and then starts syncing cannot be changed.
 
 However, by using the appropriate command line options, rsync does support
-a mode where it will print the files that need syncing to STDOUT, without
-delay (it will print them immediately as it finds/identifies them).
+a mode where it will print the files that need syncing to STDOUT without
+delay (it will print them immediately as it finds/identifies them, during
+index building).
 
-This enables a huge increase in efficiency as follows:
+This enables `rsyncnow` to introduce a huge increase in efficiency as follows:
 
-1. Run a set of `rsync` processes that will be finding files to sync
+1. We run a set of `rsync` processes that will be finding files to sync
 (in dry run mode) and printing them to STDOUT as a stream. We call
-these processes `finders`, and currently there is always 1 rsync
-finder process started for each source directory.
+these processes `finders`.
 
 1. As the finders keep printing files to sync, keep reading their
 STDOUT in real-time and pushing the files needing a sync to the queue.
@@ -110,12 +110,20 @@ rsyncnow -v /source/dir /target/dir -- -aniRe=ssh
 
 ## Extra notes
 
+For speed, `rsyncnow`'s default is to find files to sync just based on their
+file size. This can be reverted back to the usual checksum verification just
+by removing `--size-only`, as shown in the examples above.
+
+Currently there is always 1 rsync finder process that is started for each
+source directory, concurrently. If you don't want multiple finders running
+at the same time (for example if all source directories to sync are on the
+same partition), you should call `rsyncnow` multiple times with 1 source path
+in every invocation instead of once with multiple source paths.
+
 Rsyncnow doesn't put any restrictions on the rsync options one can use in
 either find or sync phase (options related to comparing/finding files,
 what to copy/sync, max bandwidth to use etc.).
-
 See a myriad of options available in [rsync man page](https://download.samba.org/pub/rsync/rsync.1)
-
 
 ## Feedback
 
