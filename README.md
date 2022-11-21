@@ -56,6 +56,11 @@ we run separate rsync processes (called "syncers") which are given those
 specific files to sync. Rsync starts syncing immediately since it is given
 specific paths, there is no index to build.
 
+1. Additionally, if the files to sync are being found faster than they
+are synced, and the bandwidth/resource limits allow it, one can run the
+tool with multiple `syncer` processes to achieve faster/concurrent
+syncing of multiple files.
+
 ## Usage instructions
 
 You need Ruby installed to run the script. This is hopefully a trivial requirement.
