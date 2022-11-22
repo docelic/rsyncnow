@@ -62,7 +62,7 @@ syncing of multiple files.
 
 ## Usage instructions
 
-You need Ruby installed to run the script. This is hopefully a trivial requirement.
+You need Ruby installed to run the script. Hopefully this is a trivial requirement.
 
 
 ```
