@@ -72,13 +72,13 @@ OPTIONS:
   -f, --finders 1    - Number of rsync find processes. Currently always gets
                        reset to the number of specified SRC paths
   -s, --syncers 1    - Nr. of respawning rsync sync/copy processes, per finder
-  -b, --batchsize 5  - Number of files to queue before starting a sync
+  -b, --batchsize 5  - Number of files to collect in a batch and sync
   -q, --queuesize 50 - Max number of paths to queue for sync. If not specified,
                        defaults to batchsize * 10. Rsync find processes get
                        automatically paused when their queue goes above this
                        limit and are resumed when queue falls below threshold
   -t, --timeout 5.0  - After timeout seconds, run rsync sync/copy process even
-                       if batch wasn't full
+                       if a batch isn't full
 
   -r, --rsync rsync  - Name (and/or path) of rsync binary
 
@@ -114,7 +114,27 @@ rsyncnow -v /source/dir /target/dir
 rsyncnow -v /source/dir /target/dir -- -aniRe=ssh --size-only -- -lptgoD0e=ssh --files-from=- -W
 ```
 
-## Extra notes
+## Notes on options -b, -q, -t
+
+Option `-b` (`--batchsize`) organizes files to sync in batches to reduce the number of
+`rsync` process invocations. (If one specifies `-b 1` then a separate process would be
+called every time a file was to be synced.)
+
+Option `-q` defines max internal queue size. Finder processes are automatically paused
+if they fill up the queue to this limit (i.e. if they are finding files to sync much
+faster than the syncers are able to process them). This option doesn't primarily exist
+to save RAM, but to stop finders from finding files too quickly. As long as syncers
+are syncing the files, the whole syncing process isn't over anyway, so by slowing down
+finders (spreading their work over of time), we increase the chance of changes in the
+source directories to be picked up on the first run or `rsyncnow`.
+
+Finally, re. option `-t`: if batch size is set to a large value, or if the files to
+sync are rarely found (e.g. if the source and destination are fairly well synced
+already), then it makes sense to just sync whatever is found every X seconds, to not
+let the process go on for too long finding files to sync (and without syncing anything
+in the meantime).
+
+## Misc notes
 
 Currently there is always 1 rsync finder process that is started for each
 source directory, concurrently. If you don't want multiple finders running
