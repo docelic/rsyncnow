@@ -118,21 +118,23 @@ rsyncnow -v /source/dir /target/dir -- -aniRe=ssh --size-only -- -lptgoD0e=ssh -
 
 Option `-b` (`--batchsize`) organizes files to sync in batches to reduce the number of
 `rsync` process invocations. (If one specifies `-b 1` then a separate process would be
-called every time a file was to be synced.)
+called every time a file is synced.)
 
 Option `-q` defines max internal queue size. Finder processes are automatically paused
 if they fill up the queue to this limit (i.e. if they are finding files to sync much
 faster than the syncers are able to process them). This option doesn't primarily exist
-to save RAM, but to stop finders from finding files too quickly. As long as syncers
-are syncing the files, the whole syncing process isn't over anyway, so by slowing down
-finders (spreading their work over of time), we increase the chance of changes in the
-source directories to be picked up on the first run or `rsyncnow`.
+to save RAM, but to stop finders from finding all the files quickly and finishing
+the directory traversal much sooner than syncers will be done with syncing.
+As long as syncers are syncing the files, the whole syncing process isn't over anyway,
+so by slowing down finders (by spreading their work over more time), we increase the
+chance of any changes in the source directories to be picked up on the first run
+or `rsyncnow`.
 
 Finally, re. option `-t`: if batch size is set to a large value, or if the files to
 sync are rarely found (e.g. if the source and destination are fairly well synced
-already), then it makes sense to just sync whatever is found every X seconds, to not
-let the process go on for too long finding files to sync (and without syncing anything
-in the meantime).
+already), then it makes sense to just sync whatever paths are found every X seconds,
+not to let the process of finding files go on for too long, without syncing
+anything in the meantime.
 
 ## Misc notes
 
