@@ -49,8 +49,8 @@ We call these processes `finders`.
 1. As finders keep printing files to sync, `rsyncnow` keeps reading
 them and pushing them to a small internal queue of files to sync.
 
-1. As soon as `rsyncnow` finds enough paths to sync to form a "block"
-(or every X seconds if a block has not been filled up yet), it runs
+1. As soon as `rsyncnow` finds enough paths to sync in a batch,
+(or every X seconds if a batch has not been filled up yet), it runs
 separate rsync processes (called "syncers") which are given those
 specific files to sync. Syncers start syncing immediately since they
 are given specific paths, there are no indexes to build.
@@ -72,13 +72,13 @@ OPTIONS:
   -f, --finders 1    - Number of rsync find processes. Currently always gets
                        reset to the number of specified SRC paths
   -s, --syncers 1    - Nr. of respawning rsync sync/copy processes, per finder
-  -b, --blocksize 5  - Number of files to queue before starting a sync
+  -b, --batchsize 5  - Number of files to queue before starting a sync
   -q, --queuesize 50 - Max number of paths to queue for sync. If not specified,
-                       defaults to blocksize * 10. Rsync find processes get
+                       defaults to batchsize * 10. Rsync find processes get
                        automatically paused when their queue goes above this
                        limit and are resumed when queue falls below threshold
   -t, --timeout 5.0  - After timeout seconds, run rsync sync/copy process even
-                       if block wasn't full
+                       if batch wasn't full
 
   -r, --rsync rsync  - Name (and/or path) of rsync binary
 

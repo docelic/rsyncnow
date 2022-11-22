@@ -15,13 +15,13 @@ OPTIONS:
   -f, --finders 1    - Number of rsync find processes. Currently always gets
                        reset to the number of specified SRC paths
   -s, --syncers 1    - Nr. of respawning rsync sync/copy processes, per finder
-  -b, --blocksize 5  - Number of files to queue before starting a sync
+  -b, --batchsize 5  - Number of files to queue before starting a sync
   -q, --queuesize 50 - Max number of paths to queue for sync. If not specified,
-                       defaults to blocksize * 10. Rsync find processes get
+                       defaults to batchsize * 10. Rsync find processes get
                        automatically paused when their queue goes above this
                        limit and are resumed when queue falls below threshold
   -t, --timeout 5.0  - After timeout seconds, run rsync sync/copy process even
-                       if block wasn't full
+                       if batch wasn't full
 
   -r, --rsync rsync  - Name (and/or path) of rsync binary
 
@@ -69,7 +69,7 @@ end
 $C= {
   finders: 1,
   syncers: 1,
-  blocksize: 5,
+  batchsize: 5,
   queuesize: nil,
   timeout: 5.0,
   rsync: 'rsync',
@@ -89,7 +89,7 @@ $mutex= Mutex.new
 opts= GetoptLong.new(
   [ '--finders', '-f', GetoptLong::REQUIRED_ARGUMENT ],
   [ '--syncers', '-s', GetoptLong::REQUIRED_ARGUMENT ],
-  [ '--blocksize', '-b', GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--batchsize', '-b', GetoptLong::REQUIRED_ARGUMENT ],
   [ '--queuesize', '-q', GetoptLong::REQUIRED_ARGUMENT ],
   [ '--timeout', '-t', GetoptLong::REQUIRED_ARGUMENT ],
   [ '--rsync', '-r', GetoptLong::REQUIRED_ARGUMENT ],
@@ -101,7 +101,7 @@ opts.ordering= 2
 
 opts.each do |opt, arg|
   case opt
-  when '--finders', '--syncers', '--blocksize', '--queuesize', '--timeout'
+  when '--finders', '--syncers', '--batchsize', '--queuesize', '--timeout'
     $C[opt[2..].to_sym]= arg.to_i
   when '--rsync'
     $C[:rsync]= arg
@@ -144,8 +144,8 @@ end
 # Last path is always destination, and all others before it are sources
 $C[:destination]= $C[:sources].pop
 
-# Queue size, if unspecified, defaults to 10 x blocksize
-$C[:queuesize]||= $C[:blocksize]* 10
+# Queue size, if unspecified, defaults to 10 x batchsize
+$C[:queuesize]||= $C[:batchsize]* 10
 
 # If more parallelization is requested than possible, reduce the number
 # XXX currently always re-set to number of sources, because option
@@ -156,7 +156,7 @@ end
 
 # How many source paths will each finder process (currently always 1
 # because of the above note)
-$C[:finder_block_size]= ($C[:sources].size/$C[:finders].to_f).ceil
+$C[:finder_batch_size]= ($C[:sources].size/$C[:finders].to_f).ceil
 
 if $C[:verbose]
   $C[:sync_options].unshift '-v'
@@ -228,14 +228,14 @@ class Syncer
 
     loop do
       list= []
-      $C[:blocksize].times do |i|
+      $C[:batchsize].times do |i|
         begin
           Timeout::timeout($C[:timeout]) {
             list.push queue.pop
           }
         rescue Timeout::Error
           if list.size> 0
-            v 'Finder timeout reached; running syncer with %d out of %d paths' % [list.size, $C[:blocksize]]
+            v 'Finder timeout reached; running syncer with %d out of %d paths' % [list.size, $C[:batchsize]]
           end
           break
         end
@@ -269,7 +269,7 @@ v "Config: #{$C}"
 
 threads= []
 $C[:finders].times do |i|
-  range= ($C[:finder_block_size]*i)...($C[:finder_block_size]*(i+1))
+  range= ($C[:finder_batch_size]*i)...($C[:finder_batch_size]*(i+1))
   threads<< Thread.new { Finder.new $C[:rsync], $C[:find_options], $C[:sources][range], $C[:destination] }
 end
 threads.each &:join
