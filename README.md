@@ -46,9 +46,8 @@ This enables `rsyncnow` to introduce a huge increase in efficiency as follows:
 files to sync (in dry run mode) and printing them to STDOUT as a stream.
 We call these processes `finders`.
 
-1. As the finders keep printing files to sync, `rsyncnow` keeps reading
-them in real-time and pushing them to a small internal queue of files
-to be synced.
+1. As finders keep printing files to sync, `rsyncnow` keeps reading
+them and pushing them to a small internal queue of files to sync.
 
 1. As soon as `rsyncnow` finds enough paths to sync to form a "block"
 (or every X seconds if a block has not been filled up yet), it runs
