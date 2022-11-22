@@ -32,8 +32,8 @@ another sync.
 
 So how does `rsyncnow` help?
 
-The above-described behavior of rsync in which it first builds an index
-and then starts syncing cannot be changed.
+The above-described behavior of rsync, in which it first builds an index
+and then starts syncing, cannot be changed.
 
 However, by using the appropriate command line options, rsync does support
 a mode where it will print the files that need syncing to STDOUT without
@@ -47,10 +47,10 @@ files to sync (in dry run mode) and printing them to STDOUT as a stream.
 We call these processes `finders`.
 
 1. As the finders keep printing files to sync, `rsyncnow` keeps reading
-their STDOUT in real-time and pushing the files to be synced to a small
-internal queue.
+them in real-time and pushing them to a small internal queue of files
+to be synced.
 
-1. As it populates the queue and finds enough paths to form a "block"
+1. As soon as `rsyncnow` finds enough paths to sync to form a "block"
 (or every X seconds if a block has not been filled up yet), it runs
 separate rsync processes (called "syncers") which are given those
 specific files to sync. Syncers start syncing immediately since they
