@@ -126,7 +126,7 @@ faster than the syncers are able to process them). This option doesn't primarily
 to save RAM, but to stop finders from finding all the files quickly and finishing
 the directory traversal much sooner than syncers will be done with syncing. Namely,
 as long as syncers are syncing the files, the whole syncing process isn't over anyway,
-so by slowing down finders (by spreading their work over a larger time span), we
+so by slowing down finders (by spreading their work over more time), we
 increase the chance of any changes in the source directories to be picked up on the
 first run or `rsyncnow`.
 
