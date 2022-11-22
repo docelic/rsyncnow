@@ -57,8 +57,8 @@ are given specific paths, there are no indexes to build.
 
 1. Additionally, if the files to sync are being found faster than they
 are synced, and the bandwidth/resource limits allow it, one can run
-`rsyncnow` with multiple `syncer` processes to achieve faster/concurrent
-syncing of multiple files.
+`rsyncnow` with multiple `syncer` processes to achieve even
+faster/concurrent syncing of multiple files.
 
 ## Usage instructions
 
