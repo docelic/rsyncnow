@@ -124,11 +124,11 @@ Option `-q` defines max internal queue size. Finder processes are automatically 
 if they fill up the queue to this limit (i.e. if they are finding files to sync much
 faster than the syncers are able to process them). This option doesn't primarily exist
 to save RAM, but to stop finders from finding all the files quickly and finishing
-the directory traversal much sooner than syncers will be done with syncing.
-As long as syncers are syncing the files, the whole syncing process isn't over anyway,
-so by slowing down finders (by spreading their work over more time), we increase the
-chance of any changes in the source directories to be picked up on the first run
-or `rsyncnow`.
+the directory traversal much sooner than syncers will be done with syncing. Namely,
+as long as syncers are syncing the files, the whole syncing process isn't over anyway,
+so by slowing down finders (by spreading their work over a larger time span), we
+increase the chance of any changes in the source directories to be picked up on the
+first run or `rsyncnow`.
 
 Finally, re. option `-t`: if batch size is set to a large value, or if the files to
 sync are rarely found (e.g. if the source and destination are fairly well synced
