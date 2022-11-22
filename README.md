@@ -47,11 +47,11 @@ files to sync (in dry run mode) and printing them to STDOUT as a stream.
 We call these processes `finders`.
 
 1. As finders keep printing files to sync, `rsyncnow` keeps reading
-them and pushing them to a small internal queue of files to sync.
+them and pushing them to a small internal queue.
 
-1. As soon as `rsyncnow` finds enough paths to sync in a batch,
+1. As soon as `rsyncnow` finds enough paths to sync in a batch
 (or every X seconds if a batch has not been filled up yet), it runs
-separate rsync processes (called "syncers") which are given those
+separate rsync processes (called `syncers`) which are given those
 specific files to sync. Syncers start syncing immediately since they
 are given specific paths, there are no indexes to build.
 
