@@ -42,9 +42,9 @@ index building).
 
 This enables `rsyncnow` to introduce a huge increase in efficiency as follows:
 
-1. It runs a set of `rsync` processes (by default 1) that will be finding
-files to sync (in dry run mode) and printing them to STDOUT as a stream.
-We call these processes `finders`.
+1. It runs a set of `rsync` processes (by default 1 per source directory)
+that will be finding files to sync (in dry run mode) and printing them to
+STDOUT as a stream.  We call these processes `finders`.
 
 1. As finders keep printing files to sync, `rsyncnow` keeps reading
 them and pushing them to a small internal queue.
