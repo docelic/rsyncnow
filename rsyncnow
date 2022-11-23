@@ -4,6 +4,11 @@ require 'getoptlong'
 require 'open3'
 require 'timeout'
 
+# TODO:
+# - Ability to use --finders X with X less than number of source paths
+# - If finders finish, run sync immediately instead of waiting -t SECs
+# - Solve error with /tmp/a /tmp/b
+
 #######################################################################
 # Usage/help and examples:
 
