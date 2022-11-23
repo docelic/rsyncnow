@@ -101,8 +101,10 @@ opts.ordering= 2
 
 opts.each do |opt, arg|
   case opt
-  when '--finders', '--syncers', '--batchsize', '--queuesize', '--timeout'
+  when '--finders', '--syncers', '--batchsize', '--queuesize'
     $C[opt[2..].to_sym]= arg.to_i
+  when '--timeout'
+    $C[opt[2..].to_sym]= arg.to_f
   when '--rsync'
     $C[:rsync]= arg
   when '--verbose'
@@ -181,7 +183,10 @@ class Finder
 
     sources.each do |source|
       dest2= dest
-      if not source[-1]== '/'
+      if source[-1]!= '/' and File.directory? source
+        source += '/'
+      end
+      if source[-1]!= '/'
         source_size= source.size
         dest2= File.join dest2, File.basename(source)
       else
@@ -207,7 +212,12 @@ class Finder
               sleep $C[:timeout]
             end
           end
-          Process.kill 'CONT', t.pid
+
+          begin
+            Process.kill 'CONT', t.pid
+          rescue Errno::ESRCH
+            STDERR.puts 'Cannot find finder child process %d; already exited?; ignoring' % [t.pid]
+          end
         end
         t.join
       }
@@ -235,13 +245,14 @@ class Syncer
           }
         rescue Timeout::Error
           if list.size> 0
-            v 'Finder timeout reached; running syncer with %d out of %d paths' % [list.size, $C[:batchsize]]
+            v 'Finder timeout reached for %s; running syncer with %d out of %d paths' % [source, list.size, $C[:batchsize]]
           end
           break
         end
       end
 
       if list.size> 0
+        v 'Finder batch size reached for %s; running syncer with a batch of %d paths' % [source, $C[:batchsize]]
         read_io, write_io= IO.pipe
         child= fork do
           write_io.close
@@ -253,11 +264,11 @@ class Syncer
         write_io.close
         Process.wait child
       else
-        v 'No more finders running and no more paths queued; exiting'
         break if $C[:runtime][:finders]== 0
       end
     end
 
+    #v 'No more finders running and no more paths queued for %s; closing' % [source]
   end
 end
 
